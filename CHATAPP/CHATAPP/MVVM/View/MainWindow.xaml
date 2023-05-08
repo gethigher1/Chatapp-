@@ -1,0 +1,70 @@
+﻿<Window x:Class="CHATAPP.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:CHATAPP" xmlns:viewmodel="clr-namespace:ChatClient.MVVM.ViewModel"
+        mc:Ignorable="d"
+        Title="Chat App" Height="474" Width="816"
+        Background=" #36393F"
+        ResizeMode="CanResizeWithGrip">
+
+    <Window.DataContext>
+        <viewmodel:MainViewModel/>
+    </Window.DataContext>
+    
+    
+    
+    <Grid>
+        <Grid.ColumnDefinitions>
+            
+        <ColumnDefinition Width="200"/>
+        <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+
+        <DockPanel>
+            
+            <TextBox  Height="25"
+                     DockPanel.Dock="Top" Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBox Height="25"
+                     DockPanel.Dock="Top" Text=""/>
+            <Button
+                    DockPanel.Dock="Top"
+                    Content="Connect"
+                    Click="Button_Click"
+                    Height="25"
+                    Command="{Binding ConnectToServerCommand}"
+            VerticalAlignment="Top"/>
+            
+            <ListView ItemsSource="{Binding Users}" Height="359">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Username}"/>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </DockPanel>
+
+        <StackPanel Grid.Column="1">
+            <ListView Height="390"
+                      
+                      
+                      ItemsSource="{Binding Messages}"/>
+            
+            <StackPanel Orientation="Horizontal">
+                <TextBox Height="45"
+                     Width="500"
+                     VerticalContentAlignment="Center"
+                         Text="{Binding Message,UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Width="50"
+                        Content="Send"
+                        Command="{Binding SendMessageCommand}"/>
+                <Button Width="50"
+                        Content="Fájl "/>
+                
+                </StackPanel>
+            
+            </StackPanel>
+        
+    </Grid>
+</Window>

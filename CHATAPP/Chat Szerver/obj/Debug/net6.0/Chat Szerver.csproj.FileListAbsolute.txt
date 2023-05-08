@@ -1,0 +1,15 @@
+C:\Users\totth\source\repos\CHATAPP\Chat Szerver\bin\Debug\net6.0\Chat Szerver.exe
+C:\Users\totth\source\repos\CHATAPP\Chat Szerver\bin\Debug\net6.0\Chat Szerver.deps.json
+C:\Users\totth\source\repos\CHATAPP\Chat Szerver\bin\Debug\net6.0\Chat Szerver.runtimeconfig.json
+C:\Users\totth\source\repos\CHATAPP\Chat Szerver\bin\Debug\net6.0\Chat Szerver.dll
+C:\Users\totth\source\repos\CHATAPP\Chat Szerver\bin\Debug\net6.0\Chat Szerver.pdb
+C:\Users\totth\source\repos\CHATAPP\Chat Szerver\obj\Debug\net6.0\Chat Szerver.csproj.AssemblyReference.cache
+C:\Users\totth\source\repos\CHATAPP\Chat Szerver\obj\Debug\net6.0\Chat Szerver.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\totth\source\repos\CHATAPP\Chat Szerver\obj\Debug\net6.0\Chat Szerver.AssemblyInfoInputs.cache
+C:\Users\totth\source\repos\CHATAPP\Chat Szerver\obj\Debug\net6.0\Chat Szerver.AssemblyInfo.cs
+C:\Users\totth\source\repos\CHATAPP\Chat Szerver\obj\Debug\net6.0\Chat Szerver.csproj.CoreCompileInputs.cache
+C:\Users\totth\source\repos\CHATAPP\Chat Szerver\obj\Debug\net6.0\Chat Szerver.dll
+C:\Users\totth\source\repos\CHATAPP\Chat Szerver\obj\Debug\net6.0\refint\Chat Szerver.dll
+C:\Users\totth\source\repos\CHATAPP\Chat Szerver\obj\Debug\net6.0\Chat Szerver.pdb
+C:\Users\totth\source\repos\CHATAPP\Chat Szerver\obj\Debug\net6.0\Chat Szerver.genruntimeconfig.cache
+C:\Users\totth\source\repos\CHATAPP\Chat Szerver\obj\Debug\net6.0\ref\Chat Szerver.dll
