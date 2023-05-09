@@ -255,6 +255,7 @@ namespace ChatClient.MVVM.Model
 }
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -265,8 +266,8 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 using System.Windows.Shapes;
+using Microsoft.Win32;
 
 namespace CHATAPP
 {
@@ -274,47 +275,46 @@ namespace CHATAPP
     /// Interaction logic for MainWindow.xaml
     /// </summary>
     public partial class MainWindow : Window
-    {	
+    {
         public MainWindow()
         {
             InitializeComponent();
         }
-
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-        
 
         }
-        
-        private void file_attach(object sender, RoutedEventArgs e)
-        {
-            Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog();
-            bool? response = openFileDialog.ShowDialog();
-            if(response == true)
-            {
-                string filepath = openFileDialog.FileName;
-                MessageBox.Show(filepath);
-            }
-        }
 
-    }
-}
-using System;
-
-namespace CHATAPP
+       private void file_attach(object sender, RoutedEventArgs e)
 {
-    internal class SubWindow
-    {
-        public SubWindow()
-        {
-        }
+    Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog();
+    bool? response = openFileDialog.ShowDialog();
+            if(response == true)
+             {
+        string filepath = openFileDialog.FileName;
+        string filename = System.IO.Path.GetFileName(filepath);
+        string destFolder = @"C:\MyCustomDirectory\";
+                Console.WriteLine($"{Username} attached a file.");
 
-        internal void Show()
+                try
+                {
+            System.IO.Directory.CreateDirectory(destFolder);
+            string destFile = System.IO.Path.Combine(destFolder, filename);
+            System.IO.File.Copy(filepath, destFile, true);
+            MessageBox.Show("File attached successfully.");
+            AttachedFileLabel.Content = $"Attached file: {filename}";
+        }
+        catch (Exception ex)
         {
-            throw new NotImplementedException();
+            MessageBox.Show("Error attaching file: " + ex.Message);
         }
     }
 }
+
+
+    }
+}
+
 using ChatClient.MVVM.Core;
 using ChatClient.MVVM.Model;
 using ChatClient.Net;
@@ -473,7 +473,6 @@ namespace ChatClient.Net
         xmlns:local="clr-namespace:CHATAPP" xmlns:viewmodel="clr-namespace:ChatClient.MVVM.ViewModel"
         mc:Ignorable="d"
         Title="Chat App" Height="474" Width="816"
-        Background=" #36393F"
         ResizeMode="CanResizeWithGrip">
 
     <Window.DataContext>
@@ -528,8 +527,8 @@ namespace ChatClient.Net
                         Command="{Binding SendMessageCommand}"/>
                 <Button Width="50"
                         Content="Fájl"
-                        Click="file_attach"/>/>
-
+                        Click="file_attach"/>
+                <Label x:Name="AttachedFileLabel" Content=""/>
             </StackPanel>
 
         </StackPanel>
