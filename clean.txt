@@ -1,0 +1,520 @@
+using System.Text;
+
+namespace Chat_Szerver.Net.IO
+{
+    class PacketBuilder  //data -> memory stream 
+    {
+        MemoryStream ms;
+        public PacketBuilder()
+        {
+            ms = new MemoryStream(); //3 funkcio write/
+        }
+
+        public void WriteOpCode(byte opcode)
+        {
+            ms.WriteByte(opcode);
+        }
+
+        public void WriteMessage(string msg)
+        {
+            var msgLength = msg.Length; //payload
+            ms.Write(BitConverter.GetBytes(msgLength));
+            ms.Write(Encoding.ASCII.GetBytes(msg));
+        }
+
+        public byte[] GetPacketBytes()
+        {
+            return ms.ToArray();
+        }
+        public void WriteRecipient(string recipient)
+        {
+            var recipientLength = recipient.Length;
+            ms.Write(BitConverter.GetBytes(recipientLength));
+            ms.Write(Encoding.ASCII.GetBytes(recipient));
+        }
+
+    }
+}
+using System.Net.Sockets;
+using System.Text;
+
+namespace Chat_Szerver.Net.IO
+{
+    class PacketReader : BinaryReader //refrektálja amit írunk
+    {
+        private NetworkStream _ns;
+        public PacketReader(NetworkStream ns) : base(ns)
+        {
+            _ns = ns;
+        }
+
+        public string ReadMessage()
+        {
+            byte[] msgBuffer; //temporary buffer
+            var length = ReadInt32();
+            msgBuffer = new byte[length];
+            _ns.Read(msgBuffer, 0, length);
+
+            var msg = Encoding.ASCII.GetString(msgBuffer);
+            return msg;
+        }
+
+    }
+}
+using Chat_Szerver.Net.IO;
+using System.Net.Sockets;
+
+namespace Chat_Szerver
+{
+    class Client
+    {
+        public string Username { get; set; }
+        public Guid UID { get; set; }
+        public TcpClient ClientSocket { get; set; }
+
+        PacketReader _packetReader;
+
+        public Client(TcpClient client) //ctor
+        {
+            ClientSocket = client;
+            UID = Guid.NewGuid();   //uj GUID generálása
+            _packetReader = new PacketReader(ClientSocket.GetStream());
+
+            var opcode = _packetReader.ReadByte();
+            Username = _packetReader.ReadMessage();
+
+
+
+
+            Console.WriteLine($"[{DateTime.Now}]: Új felhasznalo csatlakozott az alábbi néven: {Username}.");
+
+            Task.Run(() => Process());
+
+        }
+
+        //packet processzor
+        void Process()
+        {
+            while (true)
+            {
+                try
+                {
+                    var opcode = _packetReader.ReadByte();
+                    switch (opcode)
+                    {
+                        case 5:
+                            var msg = _packetReader.ReadMessage();
+                            Console.WriteLine($"[{DateTime.Now}]:Message recieved! {msg}");
+                            Program.Program.BroadcastMessage($"[{DateTime.Now}] : [{Username}]: {msg}");
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                catch (Exception)
+                {
+                    Console.WriteLine($"[{UID.ToString()}]: Disconnected!");
+                    Program.Program.BroadcastDisconnect(UID.ToString());
+                    ClientSocket.Close();
+                    break;
+                }
+            }
+        }
+    }
+}
+using Chat_Szerver;
+using Chat_Szerver.Net.IO;
+using System.Net;
+using System.Net.Sockets;
+
+namespace Program
+{
+    class Program
+    {
+        public static List<Client> users;
+        static TcpListener listener;
+        static void Main(string[] args)
+        {
+            users = new List<Client>();
+            listener = new TcpListener(IPAddress.Parse("127.0.0.1"), 8080);
+            listener.Start();//error handling
+
+            while (true)
+            {
+                var client = new Client(listener.AcceptTcpClient());    //new instance listener -> tcp client
+                users.Add(client);
+                BroadcastConnection();
+            }
+            /*Broadcast the connection to everyone on the server*/
+            //közvetítés csatlakozás után
+
+            //Console.WriteLine("Csatlakozott a felhasznalo!");
+
+        }
+
+        static void BroadcastConnection()
+        {
+            foreach (var user in users)
+            {
+                foreach (var usr in users)
+                {
+                    var broadcastPacket = new PacketBuilder(); //olvashato modon
+                    broadcastPacket.WriteOpCode(1);
+                    broadcastPacket.WriteMessage(usr.Username);
+                    broadcastPacket.WriteMessage(usr.UID.ToString());
+                    user.ClientSocket.Client.Send(broadcastPacket.GetPacketBytes());
+                }
+            }
+        }
+        public static void BroadcastMessage(string message, Guid? excludeUser = null)
+        {
+            foreach (var user in users)
+            {
+                if (excludeUser == null || user.UID != excludeUser.Value)
+                {
+                    var msgPacket = new PacketBuilder();
+                    msgPacket.WriteOpCode(5);
+                    msgPacket.WriteMessage(message);
+                    user.ClientSocket.Client.Send(msgPacket.GetPacketBytes());
+                }
+            }
+        }
+
+
+        public static void BroadcastDisconnect(string uid)
+        {
+            var disconnectedUser = users.Where(x => x.UID.ToString() == uid).FirstOrDefault();
+            users.Remove(disconnectedUser);
+
+            foreach (var user in users)
+            {
+                var broadcastPacket = new PacketBuilder();
+                broadcastPacket.WriteOpCode(10);
+                broadcastPacket.WriteMessage(uid);
+                user.ClientSocket.Client.Send(broadcastPacket.GetPacketBytes());
+            }
+
+            BroadcastMessage($"[{disconnectedUser.Username}] Disconnected!");
+        }
+
+
+    }
+}
+using System;
+using System.Windows.Input;
+
+namespace ChatClient.MVVM.Core
+{
+    public class RelayCommand : ICommand
+    {
+        private Action<object> execute;
+        private Func<object, bool> canExecute;
+
+        public event EventHandler CanExecuteChanged
+        {
+            add { CommandManager.RequerySuggested += value; }
+            remove { CommandManager.RequerySuggested -= value; }
+
+        }
+
+        public RelayCommand(Action<object> execute, Func<object, bool> canExecute = null)
+        {
+            this.execute = execute;
+            this.canExecute = canExecute;
+        }
+
+        public bool CanExecute(object parameter)
+        {
+            return this.canExecute != null && this.canExecute(parameter);
+        }
+
+        public void Execute(object parameter)
+        {
+            this.execute(parameter);
+        }
+    }
+}
+namespace ChatClient.MVVM.Model
+{
+    class UserModel
+    {
+        public string Username { get; set; }
+        public string UID { get; set; }
+    }
+}
+ <Window x:Class="CHATAPP.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:CHATAPP" xmlns:viewmodel="clr-namespace:ChatClient.MVVM.ViewModel"
+        mc:Ignorable="d"
+        Title="Chat App" Height="474" Width="816"
+        ResizeMode="CanResizeWithGrip">
+
+    <Window.DataContext>
+        <viewmodel:MainViewModel/>
+    </Window.DataContext>
+
+
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+
+            <ColumnDefinition Width="200"/>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+
+        <DockPanel>
+
+            <TextBox  Height="25"
+                     DockPanel.Dock="Top" Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBox Height="25"
+                     DockPanel.Dock="Top" Text=""/>
+            <Button
+                    DockPanel.Dock="Top"
+                    Content="Connect"
+                    Click="Button_Click"
+                    Height="25"
+                    Command="{Binding ConnectToServerCommand}"
+            VerticalAlignment="Top"/>
+
+            <ListView ItemsSource="{Binding Users}" Height="359">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Username}"/>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </DockPanel>
+
+        <StackPanel Grid.Column="1">
+            <ListView Height="390"
+                      
+                      
+                      ItemsSource="{Binding Messages}"/>
+
+            <StackPanel Orientation="Horizontal">
+                <TextBox Height="45"
+                     Width="500"
+                     VerticalContentAlignment="Center"
+                         Text="{Binding Message,UpdateSourceTrigger=PropertyChanged}"/>
+                <Button Width="50"
+                        Content="Send"
+                        Command="{Binding SendMessageCommand}"/>
+                <Button Width="50"
+                        Content="Fájl"
+                        Click="file_attach"/>
+                <Label x:Name="AttachedFileLabel" Content=""/>
+            </StackPanel>
+
+        </StackPanel>
+
+    </Grid>
+</Window>
+using System;
+using System.Windows;
+
+namespace CHATAPP
+{
+    /// <summary>
+    /// Interaction logic for MainWindow.xaml
+    /// </summary>
+    public partial class MainWindow : Window
+    {
+        private string _username;
+        public MainWindow()
+        {
+            InitializeComponent();
+
+        }
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void file_attach(object sender, RoutedEventArgs e)
+        {
+            Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog();
+            bool? response = openFileDialog.ShowDialog();
+            if (response == true)
+            {
+                string filepath = openFileDialog.FileName;
+                string filename = System.IO.Path.GetFileName(filepath);
+                string destFolder = @"C:\CHATAPP_FAJL\";
+
+
+
+                try
+                {
+                    System.IO.Directory.CreateDirectory(destFolder);
+                    string destFile = System.IO.Path.Combine(destFolder, filename);
+                    System.IO.File.Copy(filepath, destFile, true);
+                    MessageBox.Show("File attached successfully.");
+                    AttachedFileLabel.Content = $"Attached file: {filename}";
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Error attaching file: " + ex.Message);
+                }
+            }
+        }
+
+
+    }
+}
+using System;
+
+namespace CHATAPP
+{
+    internal class SubWindow
+    {
+        public SubWindow()
+        {
+        }
+
+        internal void Show()
+        {
+            throw new NotImplementedException();
+        }
+    }
+}
+using ChatClient.MVVM.Core;
+using ChatClient.MVVM.Model;
+using ChatClient.Net;
+using System.Collections.ObjectModel;
+using System.Linq;
+
+namespace ChatClient.MVVM.ViewModel
+{
+    class MainViewModel
+    {
+
+        public ObservableCollection<UserModel> Users { get; set; }
+        public ObservableCollection<string> Messages { get; set; }
+
+        public RelayCommand ConnectToServerCommand { get; set; }//property
+        public RelayCommand SendMessageCommand { get; set; }//command
+
+        public string Username { get; set; }
+        public string Message { get; set; }
+
+
+        private server server;
+        public MainViewModel()//konstruktor
+        {
+            Users = new ObservableCollection<UserModel>();
+            Messages = new ObservableCollection<string>();
+            server = new server();
+            server.connectedEvent += UserConnected;
+            server.msgRecievedEvent += MessageRecieved;
+            server.userDisconnectEvent += RemoveUser;
+            ConnectToServerCommand = new RelayCommand(o => server.ConnectToServer(Username), o => !string.IsNullOrEmpty(Username));
+            //relay -> ha nincs mező nem csatlakozik ||N2M -> csinald meg kesobb a 2 utas adat bindingot
+
+            SendMessageCommand = new RelayCommand(o => server.SendMessageToServer(Message), o => !string.IsNullOrEmpty(Message));
+
+        }
+        private void UserConnected()
+        {
+            var user = new UserModel
+            {
+                Username = server.PacketReader.ReadMessage(),
+                UID = server.PacketReader.ReadMessage(),
+            };
+            if (!Users.Any(x => x.UID == user.UID))
+            {
+                System.Windows.Application.Current.Dispatcher.Invoke(() => Users.Add(user));
+            }
+        }
+
+        private void RemoveUser()
+        {
+            var uid = server.PacketReader.ReadMessage();
+            var user = Users.Where(x => x.UID == uid).FirstOrDefault();
+            System.Windows.Application.Current.Dispatcher.Invoke(() => Users.Remove(user));
+        }
+
+        private void MessageRecieved()
+        {
+            //read data
+            var msg = server.PacketReader.ReadMessage();
+            System.Windows.Application.Current.Dispatcher.Invoke(() => Messages.Add(msg));
+        }
+    }
+}
+using Chat_Szerver.Net.IO;
+using System;
+using System.Net.Sockets;
+using System.Threading.Tasks;
+
+namespace ChatClient.Net
+{
+    class server
+    {
+        TcpClient client;
+        public PacketReader PacketReader;//ha van kapcsolat akkor csak
+
+        public event Action connectedEvent;
+        public event Action msgRecievedEvent;
+        public event Action userDisconnectEvent;
+        public server()//konstruktor
+        {
+            client = new TcpClient();
+        }
+
+        public void ConnectToServer(string username) //szerver kapcsolodas function
+        {
+            if (!client.Connected)//error handling
+            {
+                client.Connect("127.0.0.1", 8080);
+                PacketReader = new PacketReader(client.GetStream());
+
+                if (!string.IsNullOrEmpty(username))
+                {
+                    var connectPacket = new PacketBuilder();
+                    connectPacket.WriteOpCode(0);
+                    connectPacket.WriteMessage(username);
+                    client.Client.Send(connectPacket.GetPacketBytes());
+                }
+                ReadPackets();
+            }
+
+        }
+        private void ReadPackets() //offload data
+        {
+            Task.Run(() =>
+            {
+                while (true)
+                {
+                    var opcode = PacketReader.ReadByte();
+                    switch (opcode)
+                    {
+                        case 1:
+                            connectedEvent?.Invoke();
+                            break;
+
+                        case 5:
+                            msgRecievedEvent?.Invoke();
+                            break;
+
+                        case 10:
+                            userDisconnectEvent?.Invoke();
+                            break;
+
+                        default:
+                            Console.WriteLine("ah yes...");
+                            break;
+                    }
+                }
+            });
+        }
+        public void SendMessageToServer(string message)
+        {
+            var messagePacket = new PacketBuilder();
+            messagePacket.WriteOpCode(5);
+            messagePacket.WriteMessage(message);
+            client.Client.Send(messagePacket.GetPacketBytes());
+        }
+    }
+}
