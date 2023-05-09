@@ -285,6 +285,17 @@ namespace CHATAPP
         
 
         }
+        
+        private void file_attach(object sender, RoutedEventArgs e)
+        {
+            Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog();
+            bool? response = openFileDialog.ShowDialog();
+            if(response == true)
+            {
+                string filepath = openFileDialog.FileName;
+                MessageBox.Show(filepath);
+            }
+        }
 
     }
 }
@@ -516,7 +527,8 @@ namespace ChatClient.Net
                         Content="Send"
                         Command="{Binding SendMessageCommand}"/>
                 <Button Width="50"
-                        Content="Fájl "/>
+                        Content="Fájl"
+                        Click="file_attach"/>/>
 
             </StackPanel>
 
